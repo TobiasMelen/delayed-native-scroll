@@ -1,16 +1,103 @@
 ---
-
+import BlurBox from "../components/BlurBox.astro";
+import DelayedScrollBox from "../components/DelayedScrollBox.astro";
+import HexBackground from "../components/HexBackground.astro";
+import Lenis from "../components/Lenis.astro";
 ---
 
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%2210 0 100 100%22><text y=%22.90em%22 font-size=%2290%22>👆</text></svg>"></link>
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Delayed scroll</title>
+    <style>
+      @font-face {
+        font-family: "Britney";
+        src: url("/fonts/Britney-Variable.woff2") format("woff2-variations");
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        position: relative;
+        font-family: "Britney", sans-serif;
+      }
+
+      h1,
+      h2 {
+        color: transparent;
+        font-size: 8vw;
+        background-color: #00880055;
+        background-clip: text;
+        text-shadow: 2px 2px 1px rgba(255, 255, 255, 0.5);
+      }
+    </style>
+    <HexBackground />
+    <!-- <Lenis /> -->
+    <div style="height: 15svh"></div>
+    <!-- <div
+      style="height: 100svh; display: flex; justify-content:center; align-items: center;"
+    >
+      <DelayedScrollBox>
+        <BlurBox>
+          <h1 style="font-size: 5vw; text-align: center; font-weight:400;">
+            Delayed scroll response<br />👇
+          </h1>
+        </BlurBox>
+      </DelayedScrollBox>
+    </div> -->
+    <div
+      style="height: 75svh; display: flex; justify-content:center; align-items: center;"
+    >
+      <DelayedScrollBox>
+        <BlurBox>
+          <h2>
+            Please don't wake me
+          </h2>
+        </BlurBox>
+      </DelayedScrollBox>
+    </div>
+    <div
+      style="height: 75svh; display: flex; justify-content:center; align-items: center;"
+    >
+      <DelayedScrollBox>
+        <BlurBox>
+          <h2>
+            No don't shake me
+          </h2>
+        </BlurBox>
+      </DelayedScrollBox>
+    </div>
+    <div
+      style="height: 75svh; display: flex; justify-content:center; align-items: center;"
+    >
+      <DelayedScrollBox>
+        <BlurBox>
+          <h2>
+            Leave me where I am
+          </h2>
+        </BlurBox>
+      </DelayedScrollBox>
+    </div>
+
+    <div
+      style="height: 75svh; display: flex; justify-content:center; align-items: center;"
+    >
+      <DelayedScrollBox>
+        <BlurBox>
+          <h2>
+            I'm only sleeping
+          </h2>
+        </BlurBox>
+      </DelayedScrollBox>
+    </div>
+    <div style="height: 15svh"></div>
+  </body>
 </html>

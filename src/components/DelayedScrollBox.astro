@@ -1,0 +1,33 @@
+---
+const propName = Math.random().toString(36).substring(2, 15);
+---
+
+<style>
+  @property --cssProp {
+    syntax: "<percentage>";
+    inherits: true;
+    initial-value: 75%;
+  }
+
+  @keyframes adjust-pos {
+    to {
+      --cssProp: -75%;
+    }
+  }
+
+  .outer {
+    animation: adjust-pos linear both;
+    animation-timeline: view();
+  }
+
+  .inner {
+    transform: translateY(var(--cssProp));
+    transition: --cssProp 1s cubic-bezier(0.3, 1.85, 0.1, 0.8);
+  }
+</style>
+
+<div class="outer">
+  <div class="inner">
+    <slot />
+  </div>
+</div>

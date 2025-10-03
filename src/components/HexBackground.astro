@@ -1,0 +1,219 @@
+<style>
+  canvas {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+  }
+</style>
+<canvas id="glCanvas"></canvas>
+<script>
+  const canvas = document.getElementById("glCanvas") as HTMLCanvasElement;
+  const gl = (canvas instanceof HTMLCanvasElement &&
+    canvas.getContext("webgl")) as WebGLRenderingContext;
+
+  if (!gl || !canvas) {
+    throw "WebGL not supported";
+  }
+
+  // Vertex shader
+  const vsSource = `
+            attribute vec4 aPosition;
+            void main() {
+                gl_Position = aPosition;
+            }
+        `;
+
+  // Fragment shader with honeycomb pattern
+  const fsSource = `
+            precision highp float;
+            uniform vec2 uResolution;
+            uniform float uTime;
+            
+            // Hash function for pseudo-random colors
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            
+            // Noise function for background lighting
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+
+                float a = hash(i);
+                float b = hash(i + vec2(1.0, 0.0));
+                float c = hash(i + vec2(0.0, 1.0));
+                float d = hash(i + vec2(1.0, 1.0));
+
+                return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+
+            // Mix pastel colors based on noise value
+            vec3 mixPastelColors(float n, vec3 pastel1, vec3 pastel2, vec3 pastel3) {
+                vec3 color = mix(pastel1, pastel2, smoothstep(0.0, 0.5, n));
+                color = mix(color, pastel3, smoothstep(0.5, 1., n));
+                return color;
+            }
+
+            // Hexagon coordinate system
+            vec4 hexCoord(vec2 uv) {
+                const vec2 r = vec2(1.0, 1.732);
+                const vec2 h = r * 0.5;
+                
+                vec2 a = mod(uv, r) - h;
+                vec2 b = mod(uv - h, r) - h;
+                
+                vec2 gv = length(a) < length(b) ? a : b;
+                
+                // Calculate hexagon distance
+                vec2 p = abs(gv);
+                float c = dot(p, vec2(0.5, 0.866));
+                float dist = max(c, p.x);
+                
+                vec2 id = uv - gv;
+                
+                return vec4(gv, id);
+            }
+            
+            void main() {
+                // Use actual pixel coordinates for consistent honeycomb size
+                vec2 uv = gl_FragCoord.xy / 175.0;
+                
+                vec4 hc = hexCoord(uv);
+                vec2 gv = hc.xy;
+                vec2 id = hc.zw;
+
+                // Animated background noise light with pastel colors
+                vec2 noiseUV = gl_FragCoord.xy / 400.0 + uTime * 0.15;
+                float n = noise(noiseUV);
+
+                // Define 3 colors and blend between them
+                vec3 color1 = vec3(0.2, 0.6, 0.3); // dark green
+                vec3 color2 = vec3(0.4, 0.8, 0.5); // medium green
+                vec3 color3 = vec3(0.7, 1.0, 0.8); // light green
+
+                // Blend colors based on noise
+                vec3 color = mixPastelColors(n, color1, color2, color3);
+
+                // Frosted glass pattern using hexagon local coordinates
+                float frost = noise(gv * 80.0);
+                frost += noise(gv * 160.0) * 0.5;
+                frost = frost * 0.02;
+                color = color + vec3(frost);
+
+                // // Create inset lighting effect
+                vec2 p = abs(gv);
+                float c = dot(p, vec2(0.5, 0.866));
+                float d = max(c, p.x);
+                
+                // // Top-left to bottom-right gradient for lighting direction
+                vec2 lightDir = normalize(vec2(-1.0, 1.0));
+                float lightDot = dot(normalize(gv), lightDir);
+                
+                // Edge detection - narrow band at the edge only
+                float edgeStart = 0.375;
+                float edge = smoothstep(edgeStart, 1., d);
+
+                // Split highlight and shadow so they don't overlap
+                float highlight = max(0.0, lightDot) * edge;
+                float shadow = max(0.0, -lightDot) * edge * 0.6;
+
+                // Chromatic aberration / color refraction at edges
+                float edgeStrength = smoothstep(0.3, 0.5, d);
+                vec2 refractOffset = normalize(gv) * edgeStrength * 0.8;
+
+                vec2 noiseR = noiseUV + refractOffset;
+                vec2 noiseG = noiseUV;
+                vec2 noiseB = noiseUV - refractOffset;
+
+                float nR = noise(noiseR);
+                float nG = noise(noiseG);
+                float nB = noise(noiseB);
+
+                vec3 colorR = mixPastelColors(nR, color1, color2, color3);
+                vec3 colorG = mixPastelColors(nG, color1, color2, color3);
+                vec3 colorB = mixPastelColors(nB, color1, color2, color3);
+
+                // Mix refracted color with original based on edge strength
+                color = mix(color, vec3(colorR.r, colorG.g, colorB.b), edgeStrength);
+
+                // Apply lighting
+                color = color + vec3(highlight);
+                color = color - vec3(shadow);
+                
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+  function createShader(
+    gl: WebGLRenderingContext,
+    type: number,
+    source: string
+  ) {
+    const shader = gl.createShader(type)!;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource)!;
+  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource)!;
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(program));
+  }
+
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  const positions = [-1, -1, 1, -1, -1, 1, 1, 1];
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+  const positionLocation = gl.getAttribLocation(program, "aPosition");
+  const resolutionLocation = gl.getUniformLocation(program, "uResolution");
+  const timeLocation = gl.getUniformLocation(program, "uTime");
+
+  function resize() {
+    canvas.width = document.body.scrollWidth;
+    canvas.height = document.body.scrollHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+
+  let startTime = Date.now();
+
+  function render() {
+    const time = (Date.now() - startTime) / 1000.0;
+
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.useProgram(program);
+    gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+    gl.uniform1f(timeLocation, time);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    requestAnimationFrame(render);
+  }
+
+  window.addEventListener("resize", () => {
+    resize();
+  });
+
+  resize();
+  render();
+</script>
